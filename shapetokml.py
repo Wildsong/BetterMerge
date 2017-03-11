@@ -22,6 +22,7 @@ output_folder = "Willamette"
 
 # The shapefiles we'll be processing are
 sites = "sites.shp"
+sites_pow = "sites_near_lines.shp"
 subs = "substation.shp"
 subs_buffer = "subbuffer.shp"
 existing = "existing_sites.shp"
@@ -37,7 +38,7 @@ from bs4 import BeautifulSoup
 # On my computer, /c/Python27/ArcGISx6410.5 is the place to be.
 # I installed it in /c/Python27/ArcGIS10.5 too just to be certain.
 
-ogr2ogr_binary = "ogr2ogr"
+ogr2ogr_binary = "/Library/Frameworks/GDAL.framework/Programs/ogr2ogr" # From QGIS I think..
 # To install ogr2ogr, 
 # download http://download.gisinternals.com/sdk/downloads/release-1500-x64-gdal-2-1-3-mapserver-7-0-4.zip
 # or the latest zip, I chose the 1500 release because it matches ESRI, not sure if it matters
@@ -242,25 +243,31 @@ def ogr2ogr(input_fc, kmlfile, options=None):
 
     (folder, file) = os.path.split(input_fc)
     (base, ext) = os.path.splitext(file)
-
-    if ext.lower() == '.shp':
+    extl = ext.lower()
+    if extl == '.shp':
         # SHAPEFILE
         container = input_fc
         layername = base
-    else:
+    elif extl == 'gdb':
+        # FGDB
         container = folder
         layername = file
-        print("FGDB are now possible", container)
+    else:
+        print("Don't recognize this input. '%s'" % inputfc)
+        return False
 
     args = [ogr2ogr_binary, '-f', 'KML']
     if options: args += options
 
     args += [kmlfile, container, layername]
-    #print(args)
-    p = subprocess.check_output(args)
+    print(args)
+    try:
+        p = subprocess.check_output(args)
+    except Exception as e:
+        print("Can't run ogr2gor.",e)
+        return False
 
 # Todo - check return code from process
-    print("ogr2ogr says", p)
     return True
 
 # ------------------------------------------------------------------------
@@ -357,15 +364,15 @@ if __name__ == '__main__':
         (existing_buffer, "Existing site buffers", "existing_site_buffer.kml", convert_buffer_ring,  '8000FFFF'), # yellow ring
         (existing,        "Existing sites",        "existing_site.kml",        convert_point,        ''), # yellow point?
         (sites,           "Parcels",               "parcel.kml",               convert_polygons,       fix_sites),
-#        (sites,           "Parcels",               "parcel_sizes.kml",        convert_polygons,       renamer_sizes),
+        (sites_pow,       "Parcels_Powerline",     "parcel_powerline.kml",     convert_polygons,       fix_sites), 
         ]
 
     os.chdir(folder)
     print("working in", folder)
 
     #print("Not generating KML files")    
-#    shp2kml([l_layers[0]])
-    shp2kml(l_layers)
+#    shp2kml([l_layers[6]])
+#    shp2kml(l_layers)
     
     # now merge the KML files into one.
     # They are all written to a folder
@@ -374,10 +381,8 @@ if __name__ == '__main__':
     #   zip
     #   and rename
     
-#    make_doc(l_layers)
+    make_doc(l_layers)
    
     print("All done!")
 
 # That's all
-
-

@@ -15,6 +15,9 @@ folder = "/Users/bwilson/Google Drive/CEG_GIS/NexusSolutions"
 csvfile = "willamette_sites_BR.csv"
 outputcsvfile = "willamette_sites.csv"
 
+csvfile = 'willamette_sites_powerlines_BR.csv'
+outputcsvfile = 'willamette_sites_powerlines.csv'
+
 os.chdir(folder)
 
 def split(str):
@@ -26,6 +29,8 @@ def unit_test():
     print(split("two<br />tokens"))
     print(split("three<br />tokens<br />"))
     exit(0)
+    
+unwantedfieldnames = ['Join_Count', 'TARGET_FID', 'Shape_Area', 'Shape_Leng']
 
 reprocessed_rows = []
 ocol = scol = 1
@@ -52,6 +57,12 @@ with open(csvfile, "r") as fp:
             scnt+=1
         del row['SITUS']
         
+        for col in unwantedfieldnames:
+            try:
+                del row[col]
+            except KeyError:
+                pass
+        
         reprocessed_rows.append(row)
 #        print(row)
         cnt += 1
@@ -61,14 +72,21 @@ colsitus = ['SITUS'+str(x+1) for x in range(0,scol)]
 
 print(cnt, ocol, scol)
 
-fieldnames = ['OID', 'TAXLOT'] + colowner + colsitus + ['COUNTY', 'PROP_CODE', 'subtype', 'acres', 'hvf', 'ara', 'nonarable', 'Substn']
-#print(fieldnames)
+fieldnames = ['OID', 'TAXLOT'] + colowner + colsitus + ['COUNTY', 'PROP_CODE', 'subtype', 'acres', 'hvf', 'ara', 'nonarable']
+
+#fieldnames.append('Substn') # sites near substations
+fieldnames.append('pwrline')
+fieldnames.append('pwrdist') # sites near powerlines
+
+print(fieldnames)
 
 #for row in reprocessed_rows:
 #    print(row)
 #    exit(0)
 #exit(0)
-    
+
+# Write the finished CSV file
+
 with open(outputcsvfile,"w") as fp:
     wrtr = csv.DictWriter(fp, fieldnames=fieldnames)
     wrtr.writeheader()
@@ -79,8 +97,10 @@ with open(outputcsvfile,"w") as fp:
             pass
         for k in ['acres', 'hvf', 'ara', 'nonarable']:
             row[k] = str(round(float(row[k]),2)) # fix stupid floaty doubles
-        wrtr.writerow(row)
-        
+        try:
+            wrtr.writerow(row)
+        except ValueError as e:
+            print("ValueError means you probably got the fieldnames wrong.", e)
 print("all done!")
         
 
